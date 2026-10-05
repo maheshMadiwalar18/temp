@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BackHaul AI – Return Load Matcher</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="brand">BackHaul AI</div>
+    <p class="sub">Turn empty return trips into profitable journeys.</p>
+    <p class="ps">Built for APMC Amargol, Hubballi: when a truck unloads, find its return load in seconds, at a price everyone can see.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="kpis" aria-label="Impact dashboard">
+    <div class="kpi"><span class="k-label">Empty km avoided</span><b id="kKm">0</b><small id="kNote">Select a match</small></div>
+    <div class="kpi"><span class="k-label">Fuel saved (litres)</span><b id="kFuel">0</b></div>
+    <div class="kpi"><span class="k-label">Additional revenue</span><b id="kRev">₹0</b></div>
+    <div class="kpi"><span class="k-label">Truck utilization</span><b id="kUtil">0%</b><div class="bar"><i id="kUtilBar"></i></div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="find" role="tab">Find Load</button>
+        <button class="tab" data-tab="post" role="tab">Post Load</button>
+      </div>
+
+      <div id="tab-find" class="tabpane">
+        <h2>Truck details</h2>
+        <div class="fields">
+          <label>Current location<input id="tFrom" list="cities" value="Amargol APMC, Hubballi"></label>
+          <label>Destination<select id="tTo"></select></label>
+          <label>Truck capacity (t)<input id="tCap" type="number" min="1" step="0.5" value="10"></label>
+          <label>Available capacity (t)<input id="tAvail" type="number" min="0.5" step="0.5" value="6"></label>
+          <label>Truck type<select id="tType"><option>Medium Cargo</option><option>Open Body</option><option>Container</option><option>Refrigerated</option></select></label>
+          <label>Ready to leave at<input id="tTime" type="time" value="18:00"></label>
+        </div>
+        <div class="err" id="errT"></div>
+        <button class="btn primary" id="findBtn">Find Best Return Loads</button>
+      </div>
+
+      <div id="tab-post" class="tabpane" hidden>
+        <h2>Post a return load</h2>
+        <div class="fields">
+          <label>Pickup location<input id="cPick" list="cities" placeholder="e.g. Davangere"></label>
+          <label>Delivery location<select id="cDrop"></select></label>
+          <label>Cargo weight (t)<input id="cWeight" type="number" min="0.5" step="0.5" placeholder="4"></label>
+          <label>Cargo type<input id="cType" placeholder="e.g. Onions"></label>
+          <label>Pickup deadline<input id="cDeadline" type="time" value="22:00"></label>
+          <label>Offered price (₹)<input id="cPrice" type="number" min="1000" step="500" placeholder="16000"></label>
+        </div>
+        <div class="err" id="errC"></div>
+        <button class="btn primary" id="postBtn">Post Load</button>
+      </div>
+      <datalist id="cities"></datalist>
+    </div>
+
+    <div class="panel">
+      <h2>Available loads <span class="count" id="loadCount"></span></h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Route</th><th>Cargo</th><th>Weight</th><th>Price</th><th>Fair rate</th><th>Status</th></tr></thead>
+          <tbody id="loadRows"></tbody>
+        </table>
+      </div>
+      <p class="hint">Fair rate = distance × market per-km rate, scaled by load size. Brokers can't hide a premium when it's printed next to the offer.</p>
+    </div>
+  </section>
+
+  <h2 class="sect">Match results</h2>
+  <section id="results" class="cards"><div class="empty">Enter truck details and press <b>Find Best Return Loads</b>.</div></section>
+
+  <section class="grid2 lower">
+    <div class="panel"><h2>Route</h2><div id="map"></div></div>
+    <div class="panel impact">
+      <h2>Impact and savings</h2>
+      <p>BackHaul AI reduces empty kilometers by intelligently matching available truck capacity with nearby return freight.</p>
+      <div id="impactBox"></div>
+      <p class="hint">Estimates use a 1.25 road factor, 0.30 L/km diesel burn and ₹92/L. Demo mode: no API is called, so the algorithm is fully deterministic.</p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="style.js"></script>
+</body>
+</html>
