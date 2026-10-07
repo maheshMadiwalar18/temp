@@ -8,13 +8,45 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 </head>
 <body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">BackHaul AI</div>
+    <div class="auth-icon">◉</div>
+    <h1>Driver Face Login</h1>
+    <p class="auth-sub">Zero-friction identity for Saarathi. Register once, then use your face to enter Driver Mode.</p>
+
+    <div class="camera-wrap">
+      <video id="faceVideo" autoplay muted playsinline></video>
+      <div class="face-frame"><span></span></div>
+      <div id="cameraStatus" class="camera-status">Camera is off</div>
+    </div>
+
+    <div id="faceStatus" class="auth-status">Loading face recognition…</div>
+
+    <div class="auth-actions">
+      <button class="btn" id="startCameraBtn" disabled>Start Camera</button>
+      <button class="btn primary" id="registerFaceBtn" disabled>Register My Face</button>
+      <button class="btn primary" id="loginFaceBtn" disabled>Login with Face</button>
+    </div>
+
+    <button class="text-btn" id="demoBypassBtn">Demo: Continue without face</button>
+    <p class="auth-note">
+      Prototype note: face data is stored locally as a face descriptor in this browser.
+      Production deployment should use secure server-side biometric verification and explicit consent.
+    </p>
+  </div>
+</div>
+
 <header class="hero">
   <div class="wrap">
-    <div class="brand">BackHaul AI</div>
+    <div class="brand">BackHaul AI <span class="auth-pill" id="driverIdentity">Locked</span></div>
     <p class="sub">Turn empty return trips into profitable journeys.</p>
     <p class="ps">Built for APMC Amargol, Hubballi: when a truck unloads, find its return load in seconds, at a price everyone can see.</p>
+<div class="driver-session"><span id="sessionText">Driver not authenticated</span><button class="text-btn" id="logoutBtn">Lock Driver Mode</button></div>
   </div>
 </header>
 

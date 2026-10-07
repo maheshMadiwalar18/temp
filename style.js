@@ -32,6 +32,156 @@ let loads = [
 ];
 let nextId = 16, selectedId = null, lastResults = [], matched = new Set(), map, layer;
 const $ = id => document.getElementById(id);
+
+// ---------- Face authentication ----------
+const FACE_MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+const FACE_STORAGE_KEY = 'backhaul_face_descriptor_v1';
+let faceStream = null;
+let faceModelsReady = false;
+
+function setAuthStatus(msg, type='') {
+  const el = $('faceStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'auth-status' + (type ? ' ' + type : '');
+}
+
+async function loadFaceModels() {
+  try {
+    setAuthStatus('Loading face recognition models…');
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL)
+    ]);
+    faceModelsReady = true;
+    $('startCameraBtn').disabled = false;
+    $('registerFaceBtn').disabled = false;
+    $('loginFaceBtn').disabled = !localStorage.getItem(FACE_STORAGE_KEY);
+    setAuthStatus(localStorage.getItem(FACE_STORAGE_KEY)
+      ? 'Ready. Start camera and look at the screen to login.'
+      : 'Ready. Start camera and register the driver face.', 'ok');
+  } catch (err) {
+    console.error(err);
+    setAuthStatus('Could not load face models. Check internet access and reload.', 'error');
+  }
+}
+
+async function startFaceCamera() {
+  if (!faceModelsReady) return;
+  try {
+    if (faceStream) faceStream.getTracks().forEach(t => t.stop());
+    faceStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    const video = $('faceVideo');
+    video.srcObject = faceStream;
+    await video.play();
+    $('cameraStatus').textContent = 'Camera active';
+    $('registerFaceBtn').disabled = false;
+    $('loginFaceBtn').disabled = !localStorage.getItem(FACE_STORAGE_KEY);
+    setAuthStatus('Camera active. Keep your face inside the frame.');
+  } catch (err) {
+    console.error(err);
+    setAuthStatus('Camera permission is required. Use HTTPS or localhost.', 'error');
+  }
+}
+
+async function getFaceDescriptor() {
+  const video = $('faceVideo');
+  if (!video.srcObject) {
+    await startFaceCamera();
+    if (!video.srcObject) return null;
+  }
+  const detection = await faceapi
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    setAuthStatus('No clear face detected. Move closer and face the camera.', 'error');
+    return null;
+  }
+  return detection.descriptor;
+}
+
+async function registerFace() {
+  try {
+    setAuthStatus('Scanning face…');
+    const descriptor = await getFaceDescriptor();
+    if (!descriptor) return;
+    localStorage.setItem(FACE_STORAGE_KEY, JSON.stringify(Array.from(descriptor)));
+    $('loginFaceBtn').disabled = false;
+    authenticateDriver('Face registered successfully.');
+  } catch (err) {
+    console.error(err);
+    setAuthStatus('Face registration failed. Try again.', 'error');
+  }
+}
+
+async function loginWithFace() {
+  try {
+    const saved = localStorage.getItem(FACE_STORAGE_KEY);
+    if (!saved) {
+      setAuthStatus('No registered face found. Register the driver first.', 'error');
+      return;
+    }
+    setAuthStatus('Verifying face…');
+    const descriptor = await getFaceDescriptor();
+    if (!descriptor) return;
+    const stored = new Float32Array(JSON.parse(saved));
+    const distance = faceapi.euclideanDistance(descriptor, stored);
+
+    // 0.50 is a reasonable demo threshold; tune with real users before production.
+    if (distance <= 0.50) {
+      authenticateDriver(`Face verified (match ${Math.round((1 - distance) * 100)}%).`);
+    } else {
+      setAuthStatus('Face not recognised. Try again or register this driver.', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    setAuthStatus('Face login failed. Try again.', 'error');
+  }
+}
+
+function authenticateDriver(message) {
+  $('authScreen').classList.add('hidden');
+  document.body.classList.remove('locked');
+  $('driverIdentity').textContent = 'Driver Verified';
+  $('driverIdentity').classList.add('ok');
+  $('sessionText').textContent = 'Driver verified • Saarathi ready';
+  setAuthStatus(message, 'ok');
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop());
+    faceStream = null;
+    $('cameraStatus').textContent = 'Camera off';
+  }
+}
+
+function lockDriverMode() {
+  $('authScreen').classList.remove('hidden');
+  document.body.classList.add('locked');
+  $('driverIdentity').textContent = 'Locked';
+  $('driverIdentity').classList.remove('ok');
+  $('sessionText').textContent = 'Driver not authenticated';
+  $('loginFaceBtn').disabled = !localStorage.getItem(FACE_STORAGE_KEY);
+  setAuthStatus('Start the camera to verify the driver.');
+}
+
+function demoBypass() {
+  authenticateDriver('Demo mode enabled — face verification bypassed.');
+}
+
+$('startCameraBtn').onclick = startFaceCamera;
+$('registerFaceBtn').onclick = registerFace;
+$('loginFaceBtn').onclick = loginWithFace;
+$('demoBypassBtn').onclick = demoBypass;
+$('logoutBtn').onclick = lockDriverMode;
+
+document.body.classList.add('locked');
+loadFaceModels();
+
 const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
 const key = s => Object.keys(CITIES).find(c => c.toLowerCase() === String(s).trim().toLowerCase());
 
